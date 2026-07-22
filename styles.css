@@ -181,10 +181,10 @@ h3 {
 
 .weight-line {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 126px;
+  grid-template-columns: minmax(0, 1fr) 142px;
   gap: 10px;
   align-items: center;
-  margin-bottom: 14px;
+  margin-bottom: 8px;
 }
 
 .weight-line label {
@@ -193,7 +193,6 @@ h3 {
   font-weight: 800;
 }
 
-select,
 input {
   width: 100%;
   min-height: 40px;
@@ -203,13 +202,37 @@ input {
   color: var(--ink);
 }
 
-select {
-  padding: 0 10px;
-  font-weight: 900;
-}
-
 input {
   padding: 0 10px;
+}
+
+.weight-input-wrap {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 26px;
+  gap: 6px;
+  align-items: center;
+}
+
+.weight-input-wrap input {
+  font-weight: 900;
+  text-align: right;
+}
+
+.weight-input-wrap span {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.match-text {
+  margin: 0 0 14px;
+  padding: 9px 10px;
+  border-radius: 8px;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  font-size: 13px;
+  font-weight: 800;
+  line-height: 1.45;
 }
 
 .quota-grid {

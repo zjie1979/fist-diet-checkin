@@ -14,11 +14,12 @@ const WEIGHT_RULES = [
 
 const MEALS = ["早餐", "午餐", "晚餐", "加餐"];
 const AMOUNTS = [0.5, 1, 1.5, 2];
-const DEFAULT_WEIGHT = 100;
+const DEFAULT_TARGET_WEIGHT = 100;
 
 const nodes = {
   todayDate: document.querySelector("#todayDate"),
-  weightSelect: document.querySelector("#weightSelect"),
+  targetWeightInput: document.querySelector("#targetWeightInput"),
+  matchText: document.querySelector("#matchText"),
   quotaText: document.querySelector("#quotaText"),
   usedText: document.querySelector("#usedText"),
   remainText: document.querySelector("#remainText"),
@@ -44,7 +45,7 @@ const state = loadState();
 function defaultState() {
   return {
     tab: "today",
-    weight: DEFAULT_WEIGHT,
+    targetWeight: DEFAULT_TARGET_WEIGHT,
     draftMeal: "午餐",
     draftAmount: 1,
     days: {}
@@ -55,12 +56,13 @@ function loadState() {
   const base = defaultState();
   try {
     const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    const weight = validWeight(stored.weight) ? Number(stored.weight) : base.weight;
+    const rawTarget = stored.targetWeight ?? stored.weight;
+    const targetWeight = validTargetWeight(rawTarget) ? Number(rawTarget) : base.targetWeight;
     const draftMeal = MEALS.includes(stored.draftMeal) ? stored.draftMeal : base.draftMeal;
     const draftAmount = validAmount(stored.draftAmount) ? Number(stored.draftAmount) : base.draftAmount;
     return {
       tab: ["today", "rules", "records"].includes(stored.tab) ? stored.tab : base.tab,
-      weight,
+      targetWeight,
       draftMeal,
       draftAmount,
       days: normalizeDays(stored.days)
@@ -75,12 +77,14 @@ function normalizeDays(rawDays) {
   const result = {};
   Object.entries(rawDays).forEach(([date, day]) => {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !day || typeof day !== "object") return;
-    const weight = validWeight(day.weight) ? Number(day.weight) : DEFAULT_WEIGHT;
+    const targetWeight = validTargetWeight(day.targetWeight ?? day.weight) ? Number(day.targetWeight ?? day.weight) : DEFAULT_TARGET_WEIGHT;
+    const matchedRule = ruleForTarget(targetWeight);
     const entries = Array.isArray(day.entries) ? day.entries.map(normalizeEntry).filter(Boolean).slice(0, 80) : [];
     result[date] = {
       date,
-      weight,
-      quota: quotaForWeight(weight),
+      targetWeight,
+      weight: matchedRule.weight,
+      quota: matchedRule.fists,
       entries,
       completed: Boolean(day.completed)
     };
@@ -124,6 +128,11 @@ function validWeight(weight) {
   return WEIGHT_RULES.some((item) => item.weight === Number(weight));
 }
 
+function validTargetWeight(weight) {
+  const value = Number(weight);
+  return Number.isFinite(value) && value >= 60 && value <= 180;
+}
+
 function validAmount(amount) {
   const value = Number(amount);
   return Number.isFinite(value) && value >= 0.5 && value <= 12 && value * 2 === Math.round(value * 2);
@@ -133,13 +142,26 @@ function quotaForWeight(weight) {
   return WEIGHT_RULES.find((item) => item.weight === Number(weight))?.fists || 5;
 }
 
+function ruleForTarget(targetWeight) {
+  const value = validTargetWeight(targetWeight) ? Number(targetWeight) : DEFAULT_TARGET_WEIGHT;
+  return WEIGHT_RULES.reduce((best, item) => {
+    const bestDiff = Math.abs(best.weight - value);
+    const diff = Math.abs(item.weight - value);
+    if (diff < bestDiff) return item;
+    if (diff === bestDiff && item.weight > best.weight) return item;
+    return best;
+  }, WEIGHT_RULES[0]);
+}
+
 function getToday() {
   const key = todayKey();
   if (!state.days[key]) {
+    const matchedRule = ruleForTarget(state.targetWeight);
     state.days[key] = {
       date: key,
-      weight: state.weight,
-      quota: quotaForWeight(state.weight),
+      targetWeight: state.targetWeight,
+      weight: matchedRule.weight,
+      quota: matchedRule.fists,
       entries: [],
       completed: false
     };
@@ -194,6 +216,7 @@ function capitalize(value) {
 
 function renderToday() {
   const day = getToday();
+  syncTodayTarget(day);
   const quota = day.quota;
   const used = usedFists(day);
   const remain = roundHalf(quota - used);
@@ -201,9 +224,10 @@ function renderToday() {
   const isOver = used > quota;
 
   nodes.todayDate.textContent = todayLabel();
-  nodes.weightSelect.innerHTML = WEIGHT_RULES.map((item) =>
-    `<option value="${item.weight}" ${item.weight === state.weight ? "selected" : ""}>${item.weight} 斤</option>`
-  ).join("");
+  if (document.activeElement !== nodes.targetWeightInput) {
+    nodes.targetWeightInput.value = Number(state.targetWeight).toString();
+  }
+  nodes.matchText.textContent = `自动按 ${day.weight} 斤档计算：今天 ${formatFists(quota)}。`;
   nodes.quotaText.textContent = formatFists(quota);
   nodes.usedText.textContent = formatFists(used);
   nodes.remainText.textContent = remain >= 0 ? formatFists(remain) : `超 ${formatFists(Math.abs(remain))}`;
@@ -291,11 +315,16 @@ function renderHistoryItem(day) {
     <article class="history-item">
       <div class="history-main">
         <strong>${day.date} · ${formatFists(used)} / ${formatFists(day.quota)}</strong>
-        <p class="history-meta">${day.weight} 斤档 · ${day.entries.length} 条记录</p>
+        <p class="history-meta">目标 ${formatWeight(day.targetWeight)} 斤 · ${day.weight} 斤档 · ${day.entries.length} 条记录</p>
       </div>
       <span class="result-pill ${result.tone}">${result.text}</span>
     </article>
   `;
+}
+
+function formatWeight(weight) {
+  const value = Number(weight);
+  return Number.isInteger(value) ? String(value) : value.toFixed(1);
 }
 
 function switchTab(tab) {
@@ -308,8 +337,7 @@ function switchTab(tab) {
 function addEntry() {
   if (!validAmount(state.draftAmount)) return;
   const day = getToday();
-  day.weight = state.weight;
-  day.quota = quotaForWeight(state.weight);
+  syncTodayTarget(day);
   day.completed = false;
   day.entries.push({
     id: String(Date.now()),
@@ -341,10 +369,12 @@ function resetToday() {
   const day = getToday();
   if (!day.entries.length && !day.completed) return;
   if (!window.confirm("确定清空今天的记录吗？")) return;
+  const matchedRule = ruleForTarget(state.targetWeight);
   state.days[todayKey()] = {
     date: todayKey(),
-    weight: state.weight,
-    quota: quotaForWeight(state.weight),
+    targetWeight: state.targetWeight,
+    weight: matchedRule.weight,
+    quota: matchedRule.fists,
     entries: [],
     completed: false
   };
@@ -352,16 +382,20 @@ function resetToday() {
   renderAll();
 }
 
-function changeWeight(weight) {
-  if (!validWeight(weight)) return;
-  state.weight = Number(weight);
+function changeTargetWeight(weight) {
+  if (!validTargetWeight(weight)) return;
+  state.targetWeight = Number(weight);
   const day = getToday();
-  if (!day.entries.length && !day.completed) {
-    day.weight = state.weight;
-    day.quota = quotaForWeight(state.weight);
-  }
+  syncTodayTarget(day);
   saveState();
   renderAll();
+}
+
+function syncTodayTarget(day) {
+  const matchedRule = ruleForTarget(state.targetWeight);
+  day.targetWeight = state.targetWeight;
+  day.weight = matchedRule.weight;
+  day.quota = matchedRule.fists;
 }
 
 document.body.addEventListener("click", (event) => {
@@ -393,7 +427,7 @@ document.body.addEventListener("click", (event) => {
   }
 });
 
-nodes.weightSelect.addEventListener("change", (event) => changeWeight(event.target.value));
+nodes.targetWeightInput.addEventListener("input", (event) => changeTargetWeight(event.target.value));
 
 nodes.customAmount.addEventListener("input", (event) => {
   const value = Number(event.target.value);
@@ -409,7 +443,7 @@ nodes.resetTodayBtn.addEventListener("click", resetToday);
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js?v=20260722t1").catch(() => {});
+    navigator.serviceWorker.register("./sw.js?v=20260722t2").catch(() => {});
   });
 }
 
