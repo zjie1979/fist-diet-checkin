@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>拳头减肥法</title>
+  <meta name="description" content="按体重档位记录每天拳头额度的打卡 PWA。">
+  <meta name="theme-color" content="#266c62">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="拳头减肥法">
+  <link rel="manifest" href="./manifest.webmanifest?v=20260722t1">
+  <link rel="apple-touch-icon" href="./icon-180.png">
+  <link rel="icon" href="./icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./styles.css?v=20260722t1">
+</head>
+<body>
+  <main class="app-shell">
+    <header class="app-header">
+      <div>
+        <p class="eyebrow">每日拳头打卡</p>
+        <h1>拳头减肥法</h1>
+        <p class="app-note">按体重档位生成今天的拳头额度，吃了就记录。</p>
+      </div>
+      <button class="icon-button" id="resetTodayBtn" type="button" aria-label="重置今天">↺</button>
+    </header>
+
+    <section class="view is-active" id="viewToday" aria-labelledby="todayTitle">
+      <div class="view-head compact">
+        <div>
+          <span class="label">首页</span>
+          <h2 id="todayTitle">今日打卡</h2>
+        </div>
+        <span class="date-pill" id="todayDate"></span>
+      </div>
+
+      <section class="hero-panel">
+        <div class="weight-line">
+          <label for="weightSelect">体重档位</label>
+          <select id="weightSelect" aria-label="选择体重档位"></select>
+        </div>
+        <div class="quota-grid">
+          <div>
+            <span>今日额度</span>
+            <strong id="quotaText">--</strong>
+          </div>
+          <div>
+            <span>已记录</span>
+            <strong id="usedText">--</strong>
+          </div>
+          <div>
+            <span>剩余</span>
+            <strong id="remainText">--</strong>
+          </div>
+        </div>
+        <div class="progress-track" aria-label="今日拳头进度">
+          <div id="progressBar"></div>
+        </div>
+        <p class="status-text" id="statusText"></p>
+      </section>
+
+      <section class="entry-panel" aria-labelledby="entryTitle">
+        <div class="panel-title">
+          <h3 id="entryTitle">记录一餐</h3>
+          <span id="draftHint"></span>
+        </div>
+        <div class="segment-row" id="mealButtons" aria-label="选择餐次"></div>
+        <div class="amount-row" id="amountButtons" aria-label="选择拳头数量"></div>
+        <label class="custom-amount">
+          <span>自定义</span>
+          <input id="customAmount" type="number" min="0.5" max="12" step="0.5" inputmode="decimal" aria-label="自定义拳头数量">
+          <em>拳</em>
+        </label>
+        <button class="primary-button" id="addEntryBtn" type="button">加入今天</button>
+      </section>
+
+      <section class="entry-list-panel" aria-labelledby="entriesTitle">
+        <div class="panel-title">
+          <h3 id="entriesTitle">今天记录</h3>
+          <span id="entryCountText"></span>
+        </div>
+        <div class="entry-list" id="entryList"></div>
+      </section>
+
+      <div class="today-actions">
+        <button class="primary-button" id="completeTodayBtn" type="button">完成今天</button>
+        <button class="secondary-button" type="button" data-tab="rules">查看规则</button>
+      </div>
+    </section>
+
+    <section class="view" id="viewRules" aria-labelledby="rulesTitle">
+      <div class="view-head">
+        <div>
+          <span class="label">第二页</span>
+          <h2 id="rulesTitle">拳头规则</h2>
+          <p>按你提供的截图整理，体重越高，对应拳头数越多。</p>
+        </div>
+      </div>
+      <section class="rule-card">
+        <div class="rule-table" id="ruleTable"></div>
+      </section>
+      <section class="convert-card">
+        <div>
+          <span>1 拳头</span>
+          <strong>150 卡左右</strong>
+        </div>
+        <div>
+          <span>或</span>
+          <strong>100 克左右</strong>
+        </div>
+      </section>
+      <p class="source-note">这是粗略打卡工具，只按“拳头数”估算，不判断营养结构，也不替代医生或营养师建议。</p>
+    </section>
+
+    <section class="view" id="viewRecords" aria-labelledby="recordsTitle">
+      <div class="view-head">
+        <div>
+          <span class="label">第三页</span>
+          <h2 id="recordsTitle">记录统计</h2>
+          <p>看每天用了多少拳头、是否完成，以及最近的打卡结果。</p>
+        </div>
+      </div>
+      <section class="stats-grid" id="statsGrid"></section>
+      <section class="history-panel">
+        <div class="panel-title">
+          <h3>最近记录</h3>
+          <span id="historyCountText"></span>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </section>
+  </main>
+
+  <nav class="bottom-tabs" aria-label="主导航">
+    <button class="tab-button is-active" type="button" data-tab="today">今日</button>
+    <button class="tab-button" type="button" data-tab="rules">规则</button>
+    <button class="tab-button" type="button" data-tab="records">记录</button>
+  </nav>
+
+  <script src="./app.js?v=20260722t1"></script>
+</body>
+</html>
